@@ -126,3 +126,30 @@ def signup_for_activity(activity_name: str, email: str):
         activity.setdefault("participants", []).append(email)
 
     return {"message": f"Signed up {email} for {activity_name}"}
+
+
+@app.delete("/activities/{activity_name}/participants")
+def unregister_participant(activity_name: str, payload: dict):
+    """Unregister a student (by email) from an activity.
+
+    Expects JSON body: { "email": "student@mergington.edu" }
+    """
+    email = payload.get("email") if isinstance(payload, dict) else None
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Missing 'email' in request body")
+
+    # Validate activity exists
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    with _store_lock:
+        activity = activities[activity_name]
+        participants = activity.setdefault("participants", [])
+
+        if email not in participants:
+            raise HTTPException(status_code=404, detail="Participant not found in this activity")
+
+        participants.remove(email)
+
+    return {"message": f"Unregistered {email} from {activity_name}"}
